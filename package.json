@@ -1,0 +1,49 @@
+{
+  "name": "project",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start:dev": "concurrently \"tsc --watch\" \"cross-env NODE_ENV=development node --watch dist/index\"",
+    "start:prod": " cross-env NODE_ENV=production node  dist/index"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@types/node": "^25.5.2",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0"
+  },
+  "dependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.19",
+    "@types/dotenv": "^6.1.1",
+    "@types/express": "^5.0.6",
+    "@types/express-rate-limit": "^5.1.3",
+    "@types/helmet": "^0.0.48",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/nodemailer": "^8.0.0",
+    "@types/pino": "^7.0.4",
+    "@types/pino-pretty": "^4.7.5",
+    "@types/redis": "^4.0.10",
+    "@upstash/redis": "^1.37.0",
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.1",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.3.2",
+    "google-auth-library": "^10.6.2",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.4.1",
+    "nodemailer": "^8.0.5",
+    "pino": "^10.3.1",
+    "pino-pretty": "^13.1.3",
+    "redis": "^5.12.1",
+    "zod": "^4.3.6"
+  }
+}
