@@ -85,3 +85,8 @@ export const gmailAuthValidator = {
     idToken: z.jwt('invalid jwt'),
   }),
 };
+export const resendOTPValidation = {
+  body: z.strictObject({
+    email: z.email(),
+  }),
+};

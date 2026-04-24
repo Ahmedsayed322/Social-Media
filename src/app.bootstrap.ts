@@ -10,12 +10,17 @@ import { GlobalErrorHandler } from './common/middlewares/Error/GlobalErrorHandle
 import authRouter from './modules/auth/auth.controller';
 import connectDb from './db/db.connection';
 import cookieParser from 'cookie-parser';
-import { redisConnection } from './db/redis.connection';
+import morgan from 'morgan';
+import compression from 'compression';
+import redisService from './common/service/redis/redis.service';
 const bootstrap = async () => {
   const app = express();
-  await connectDb();
- await redisConnection();
+  await Promise.all([connectDb(), redisService.connect()]);
   app.use(
+    compression({
+      threshold: 1024,
+    }),
+    morgan('short'),
     express.json(),
     helmet(),
     rateLimiter.global(),
@@ -27,13 +32,8 @@ const bootstrap = async () => {
   });
 
   app.use('/api/auth', authRouter);
-  app.get('{/*dummy}', (_, res) => {
-    throw new ApiError(
-      {
-        path: 'email',
-      },
-      404,
-    );
+  app.use('{/*dummy}', () => {
+    throw new ApiError('invalid route', 404);
   });
   app.use(GlobalErrorHandler);
   app.listen(env.PORT, () => {

@@ -21,6 +21,7 @@ const env: IEnv = {
 for (const [key, value] of Object.entries(env)) {
   if (!value) {
     logger.error(`${key} is missing in environment variables`);
+    process.exit(1);
   }
 }
 

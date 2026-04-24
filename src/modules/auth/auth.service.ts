@@ -1,8 +1,6 @@
 import { Request } from 'express';
-
 import BcryptService from '../../common/utils/bcrypt/Bcrypt.service';
 import { ApiError } from '../../common/utils/ApiError/ApiError';
-import redisRepo, { RedisRepo } from '../../common/Repository/redis.repo';
 import smtpService, { SMTPService } from '../../common/utils/smtp/smtp.service';
 import logger from '../../common/utils/logger/logger.service';
 import { randomInt, randomUUID } from 'node:crypto';
@@ -10,26 +8,21 @@ import { AuthRequest, IUser } from './auth.type';
 import env from '../../config/config.service';
 import userInstance, { UserRepo } from '../../common/Repository/user.repo';
 import JWTService from '../../common/utils/JWT/JWT.service';
-import { Types } from 'mongoose';
 import { OAuth2Client } from 'google-auth-library';
 import { ProviderEnum } from '../../common/utils/enums/providers.enum';
 import { GenderEnum } from '../../common/utils/enums/gender.enum';
+import redisService, {
+  RedisService,
+} from '../../common/service/redis/redis.service';
+import { signupDTO } from './auth.Dto';
 
 class AuthService {
   constructor(
     private readonly _userModel: UserRepo,
-    private readonly redis: RedisRepo,
+    private readonly redis: RedisService,
     private readonly smtp: SMTPService,
   ) {}
-  createAccountKey = (email: string) => {
-    return `create_account::${email}`;
-  };
-  otpCodeKey = (email: string) => {
-    return `Otp::confirm_email::${email}`;
-  };
-  forgetPasswordKey = (email: string) => {
-    return `Otp::forgetPassword::${email}`;
-  };
+
   idleOperations = async (fn: () => Promise<void> | void) => {
     try {
       await fn();
@@ -40,12 +33,7 @@ class AuthService {
       });
     }
   };
-  verifyOtp = async (otp: string, hashedOtp: string) => {
-    const isValid = await BcryptService.compare(otp, hashedOtp);
-    if (!isValid) {
-      throw new ApiError('invalid Otp or its expired', 400);
-    }
-  };
+
   generateCredentials = (user: IUser) => {
     const jti = randomUUID();
     const refreshToken = JWTService.generateRefreshToken(
@@ -65,36 +53,35 @@ class AuthService {
     const hashedOtp = await BcryptService.hash(otp.toString());
     return { hashedOtp, otp };
   };
-  getRevokeTokenKeys(userId: Types.ObjectId) {
-    return `revokeToken::${userId}::*`;
-  }
-  revokedTokenKey = (userId: Types.ObjectId, jti: string) => {
-    return `revokeToken::${userId}::${jti}`;
-  };
+
   ///////////////////////////////////////////////
   signup = async (req: Request) => {
     const NODE_ENV = env.NODE_ENV;
-    const { email, firstName, lastName, password, gender } = req.body;
+    const { email, firstName, lastName, password, gender }: signupDTO =
+      req.body;
     const isExist = await this._userModel.checkByEmail(email);
     if (isExist) {
       throw new ApiError('user already exists', 409);
     }
     const { hashedOtp, otp } = await this.generateOtp();
-    const hashedPassword = await BcryptService.hash(password);
+
     await Promise.all([
       this.redis.setValue(
-        this.createAccountKey(email),
+        this.redis.createAccountKey(email),
         {
           email,
           firstName,
           lastName,
-          password: hashedPassword,
+          password,
           gender,
         },
-        { EX: 10 * 60 },
+        { EX: 15 * 60 },
       ),
-      this.redis.setValue(this.otpCodeKey(email), hashedOtp, { EX: 5 * 60 }),
+      this.redis.setValue(this.redis.otpCodeKey(email), hashedOtp, {
+        EX: 5 * 60,
+      }),
     ]);
+
     if (NODE_ENV === 'development') {
       logger.info({ otp: otp });
     }
@@ -104,25 +91,94 @@ class AuthService {
   };
   confirmEmail = async (req: Request) => {
     const { email, otp } = req.body;
-    const [data, hashedOtp] = await Promise.all([
-      this.redis.getValue(this.createAccountKey(email)),
-      this.redis.getValue(this.otpCodeKey(email)),
+    const [data, hashedOtp, numOfTries = 0, blockTtl] = await Promise.all([
+      this.redis.getValue(this.redis.createAccountKey(email)),
+      this.redis.getValue(this.redis.otpCodeKey(email)),
+      this.redis.getValue(this.redis.confirmEmailOtpTries(email)),
+      this.redis.getTtl(this.redis.blockConfirmEmailOtp(email)),
     ]);
+    if (blockTtl && blockTtl > 0) {
+      throw new ApiError(
+        `you exceeded max tries, try again after ${blockTtl} seconds`,
+        400,
+      );
+    }
     if (!data || !hashedOtp) {
       throw new ApiError('invalid Otp or its expired', 400);
     }
-    await this.verifyOtp(otp.toString(), hashedOtp as string);
+    const isValid = await BcryptService.compare(
+      otp.toString(),
+      hashedOtp as string,
+    );
+
+    if (!isValid) {
+      const tries = Number(numOfTries) + 1;
+      if (tries >= 3) {
+        await this.redis.setValue(
+          this.redis.blockConfirmEmailOtp(email),
+          true,
+          { EX: 60 * 2 },
+        );
+        await this.redis.deleteKeys([this.redis.confirmEmailOtpTries(email)]);
+      } else {
+        await this.redis.setValue(
+          this.redis.confirmEmailOtpTries(email),
+          tries,
+          { EX: 60 * 3 },
+        );
+      }
+      throw new ApiError('invalid Otp or its expired', 400);
+    }
+    await this.redis.deleteKeys([
+      this.redis.confirmEmailOtpTries(email),
+      this.redis.blockConfirmEmailOtp(email),
+    ]);
     const isExist = await this._userModel.checkByEmail(email);
     if (isExist) {
       throw new ApiError('user already exists', 409);
     }
     await this.redis.deleteKeys([
-      this.createAccountKey(email),
-      this.otpCodeKey(email),
+      this.redis.createAccountKey(email),
+      this.redis.otpCodeKey(email),
     ]);
     const user = await this._userModel.create(data as IUser);
     const { accessToken, refreshToken } = this.generateCredentials(user);
     return { refreshToken, accessToken };
+  };
+  reSendOtp = async (req: Request) => {
+    const { email } = req.body;
+    const resendBlockKey = this.redis.resendOtpBlock(email);
+    const [user, blockTtl] = await Promise.all([
+      this.redis.getValue(this.redis.createAccountKey(email)),
+      this.redis.getTtl(resendBlockKey),
+    ]);
+    if (!user) {
+      throw new ApiError(
+        'user not found or signup expired, please create account again',
+        404,
+      );
+    }
+    if (blockTtl && blockTtl > 0) {
+      throw new ApiError(
+        `please wait ${blockTtl} seconds before requesting a new OTP`,
+        400,
+      );
+    }
+    const { otp, hashedOtp } = await this.generateOtp();
+
+    await Promise.all([
+      this.redis.setValue(this.redis.otpCodeKey(email), hashedOtp, {
+        EX: 60 * 5,
+      }),
+      this.redis.setValue(resendBlockKey, true, { EX: 60 }),
+    ]);
+
+    this.idleOperations(() =>
+      this.smtp.sendOTP(email, 'Confirm Email OTP', otp),
+    );
+    if ((env.NODE_ENV = 'development')) {
+      logger.info(otp);
+    }
   };
   login = async (req: Request) => {
     const { email, password } = req.body;
@@ -144,7 +200,7 @@ class AuthService {
       throw new ApiError('user does not exist', 404);
     }
     const { hashedOtp, otp } = await this.generateOtp();
-    await this.redis.setValue(this.forgetPasswordKey(email), hashedOtp, {
+    await this.redis.setValue(this.redis.forgetPasswordKey(email), hashedOtp, {
       EX: 5 * 60,
     });
     this.idleOperations(
@@ -156,7 +212,9 @@ class AuthService {
   };
   resetPassword = async (req: Request) => {
     const { otp, email, password } = req.body;
-    const hashedOtp = await this.redis.getValue(this.forgetPasswordKey(email));
+    const hashedOtp = await this.redis.getValue(
+      this.redis.forgetPasswordKey(email),
+    );
     if (!hashedOtp) {
       throw new ApiError('invalid Otp or its expired', 400);
     }
@@ -164,12 +222,15 @@ class AuthService {
     if (!user) {
       throw new ApiError('user is not exist', 404);
     }
-    await this.verifyOtp(otp.toString(), hashedOtp as string);
+    const isValid = await BcryptService.compare(otp.toString(), hashedOtp as string);
+    if (!isValid) {
+      throw new ApiError('invalid Otp or its expired', 400);
+    }
     await this._userModel.updateOne(
       { email },
       { password: await BcryptService.hash(password) },
     );
-    await this.redis.deleteKeys([this.forgetPasswordKey(email)]);
+    await this.redis.deleteKeys([this.redis.forgetPasswordKey(email)]);
   };
   updatePassword = async (req: AuthRequest) => {
     const { user } = req;
@@ -199,12 +260,12 @@ class AuthService {
       user!.changeCredentials = new Date();
       await user!.save();
       await this.redis.deleteKeys(
-        await this.redis.getKeys(this.getRevokeTokenKeys(user!._id)),
+        await this.redis.getKeys(this.redis.getRevokeTokenKeys(user!._id)),
       );
       return;
     }
     await this.redis.setValue(
-      this.revokedTokenKey(user!._id, decoded!.jti as string),
+      this.redis.revokedTokenKey(user!._id, decoded!.jti as string),
       `${decoded!.jti}`,
       { EX: (decoded!.exp as number) - Math.floor(Date.now() / 1000) },
     );
@@ -238,4 +299,4 @@ class AuthService {
     return { refreshToken, accessToken, isNew };
   };
 }
-export default new AuthService(userInstance, redisRepo, smtpService);
+export default new AuthService(userInstance, redisService, smtpService);

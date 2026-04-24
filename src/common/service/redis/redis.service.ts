@@ -1,13 +1,35 @@
-import { RedisArgument, SetOptions } from 'redis';
-import { redisClient } from '../../db/redis.connection.js';
-import logger from '../utils/logger/logger.service.js';
-import { IUser } from '../../modules/auth/auth.type.js';
+import {
+  createClient,
+  RedisArgument,
+  RedisClientType,
+  SetOptions,
+} from 'redis';
 
-export class RedisRepo {
-  constructor(
-    private redis = redisClient,
-    private log = logger,
-  ) {}
+import { IUser } from '../../../modules/auth/auth.type.js';
+import env from '../../../config/config.service.js';
+import logger from '../../utils/logger/logger.service.js';
+
+import { RedisKeys } from './redis.keys';
+
+export class RedisService extends RedisKeys {
+  private redis: RedisClientType;
+  constructor(private log = logger) {
+    super();
+    this.redis = createClient({
+      url: env.UPSTASH_REDIS_URL,
+    });
+
+    this.handleEvent();
+  }
+  connect = async () => {
+    await this.redis.connect();
+    this.log.info('redis connected successfully');
+  };
+  handleEvent = () => {
+    this.redis.on('error', async (err) => {
+      this.log.error({ error: err });
+    });
+  };
   setValue = async (
     key: RedisArgument,
     value: unknown,
@@ -23,8 +45,9 @@ export class RedisRepo {
       throw e;
     }
   };
-
-  getValue = async (key: RedisArgument): Promise<string | IUser | null> => {
+  getValue = async (
+    key: RedisArgument,
+  ): Promise<string | IUser | null | number> => {
     try {
       const result = await this.redis.get(key);
       try {
@@ -34,6 +57,14 @@ export class RedisRepo {
       }
     } catch (e) {
       this.log.error({ message: 'cannot get a value', error: e });
+      throw e;
+    }
+  };
+  getTtl = async (key: RedisArgument) => {
+    try {
+      return await this.redis.ttl(key);
+    } catch (e) {
+      this.log.error({ message: 'cannot getTtl value', error: e });
       throw e;
     }
   };
@@ -62,6 +93,7 @@ export class RedisRepo {
       throw e;
     }
   };
+ 
 }
 
-export default new RedisRepo();
+export default new RedisService();

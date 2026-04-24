@@ -1,12 +1,12 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import { ApiError } from '../../utils/ApiError/ApiError';
 import JWTService from '../../utils/JWT/JWT.service';
 import userRepo from '../../Repository/user.repo';
-import { AuthRequest, IUser } from '../../../modules/auth/auth.type';
-import redisInst, { RedisRepo } from '../../Repository/redis.repo';
+import { AuthRequest } from '../../../modules/auth/auth.type';
+import redisService, { RedisService } from '../../service/redis/redis.service';
 
 export class Auth {
-  constructor(private redis: RedisRepo) {}
+  constructor(private redis: RedisService) {}
   private getUser = async (req: AuthRequest, res: Response) => {
     const { authorization } = req.headers;
     if (!authorization) {
@@ -24,16 +24,20 @@ export class Auth {
       throw new ApiError('invalid credentials', 401);
     }
     const isRevoked = await this.redis.getValue(
-      `revokeToken::${user!._id}::${decoded.jti}`,
+      redisService.revokedTokenKey(user!._id, decoded.jti!),
     );
     if (isRevoked) {
       throw new ApiError('invalid credentials', 401);
     }
-    if (user.changeCredentials!.getTime() > decoded.iat! * 1000) {
+    if (
+      user.changeCredentials &&
+      user.changeCredentials.getTime() > decoded.iat! * 1000
+    ) {
       throw new ApiError('invalid credentials', 401);
     }
 
     req.user = user;
+    res.locals.user = user;
     req.decoded = decoded;
   };
   authenticate = async (
@@ -54,4 +58,4 @@ export class Auth {
     };
   };
 }
-export default new Auth(redisInst);
+export default new Auth(redisService);

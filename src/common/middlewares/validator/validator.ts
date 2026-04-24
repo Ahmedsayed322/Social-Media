@@ -23,7 +23,10 @@ const Validator = (Schema: Schema) => {
       }
     }
     if (validationErrors.length) {
-      throw new ApiError(validationErrors, 400);
+    return  res.status(400).json({
+        success: false,
+        message: validationErrors,
+      });
     }
     next();
   };

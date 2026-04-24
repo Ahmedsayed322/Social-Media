@@ -5,6 +5,7 @@ import {
   gmailAuthValidator,
   loginValidation,
   otpValidation,
+  resendOTPValidation,
   resetPasswordValidation,
   signupValidation,
   updatePasswordValidation,
@@ -13,7 +14,7 @@ import { Request, Response } from 'express';
 import authService from './auth.service';
 import { successfulResponse } from '../../common/utils/response/successResponse';
 import auth from '../../common/middlewares/authentication/authentication';
-import { AuthRequest } from './auth.type';
+import { AuthRequest, IUser } from './auth.type';
 const generateRefreshToken = (res: Response, refreshToken: string) => {
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
@@ -73,7 +74,7 @@ router.patch(
 );
 router.patch(
   '/update-password',
-  auth.authenticate as RequestHandler,
+  auth.authenticate,
   Validator(updatePasswordValidation),
   async (req: AuthRequest, res: Response) => {
     await authServiceInst.updatePassword(req);
@@ -82,7 +83,7 @@ router.patch(
 );
 router.delete(
   '/logout',
-  auth.authenticate as RequestHandler,
+  auth.authenticate,
   async (req: AuthRequest, res: Response) => {
     await authServiceInst.logout(req);
     return successfulResponse(res, 200, 'user logged out');
@@ -101,6 +102,15 @@ router.post(
       isNew ? 'account created' : 'user logged in',
       { accessToken },
     );
+  },
+);
+router.post(
+  '/re-send-otp',
+  Validator(resendOTPValidation),
+  async (req: Request, res: Response, next: NextFunction) => {
+    await authServiceInst.reSendOtp(req);
+
+    return successfulResponse(res, 200, 'otp re-sent successfully');
   },
 );
 export default router;
