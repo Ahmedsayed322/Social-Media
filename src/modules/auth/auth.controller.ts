@@ -1,10 +1,10 @@
 import { NextFunction, RequestHandler, Router } from 'express';
-import Validator from '../../common/middlewares/validator/validator';
 import {
   emailValidation,
   gmailAuthValidator,
   loginValidation,
   otpValidation,
+  removeFromGalleryValidation,
   resendOTPValidation,
   resetPasswordValidation,
   signupValidation,
@@ -14,7 +14,8 @@ import { Request, Response } from 'express';
 import authService from './auth.service';
 import { successfulResponse } from '../../common/utils/response/successResponse';
 import auth from '../../common/middlewares/authentication/authentication';
-import { AuthRequest, IUser } from './auth.type';
+import multerCloud from '../../common/middlewares/upload/multer.cloud';
+import Validator from '../../common/middlewares/validator/validator';
 const generateRefreshToken = (res: Response, refreshToken: string) => {
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
@@ -76,7 +77,7 @@ router.patch(
   '/update-password',
   auth.authenticate,
   Validator(updatePasswordValidation),
-  async (req: AuthRequest, res: Response) => {
+  async (req: Request, res: Response) => {
     await authServiceInst.updatePassword(req);
     return successfulResponse(res, 200, 'passwords has been updated');
   },
@@ -84,7 +85,7 @@ router.patch(
 router.delete(
   '/logout',
   auth.authenticate,
-  async (req: AuthRequest, res: Response) => {
+  async (req: Request, res: Response) => {
     await authServiceInst.logout(req);
     return successfulResponse(res, 200, 'user logged out');
   },
@@ -113,4 +114,50 @@ router.post(
     return successfulResponse(res, 200, 'otp re-sent successfully');
   },
 );
+router.post(
+  '/upload/pfp',
+  auth.authenticate,
+  async (req: Request, res: Response) => {
+    const url = await authServiceInst.uploadProfilePicture(req);
+    return successfulResponse(
+      res,
+      200,
+      'profile picture uploaded successfully',
+      {
+        url,
+      },
+    );
+  },
+  router.post(
+    '/upload/gallery',
+
+    auth.authenticate,
+    multerCloud(false).array('gallery'),
+    async (req: Request, res: Response) => {
+      const url = await authServiceInst.uploadGallery(req);
+      return successfulResponse(
+        res,
+        200,
+        'profile picture uploaded successfully',
+        {
+          url,
+        },
+      );
+    },
+  ),
+);
+router.delete(
+  '/delete/gallery',
+  auth.authenticate,
+  Validator(removeFromGalleryValidation),
+  async (req: Request, res: Response) => {
+    await authServiceInst.removeFileFromGallery(req);
+    return successfulResponse(
+      res,
+      200,
+      'file removed from gallery successfully',
+    );
+  },
+);
+
 export default router;

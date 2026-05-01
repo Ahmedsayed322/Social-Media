@@ -4,7 +4,7 @@ import { ApiError } from '../../common/utils/ApiError/ApiError';
 import smtpService, { SMTPService } from '../../common/utils/smtp/smtp.service';
 import logger from '../../common/utils/logger/logger.service';
 import { randomInt, randomUUID } from 'node:crypto';
-import { AuthRequest, IUser } from './auth.type';
+import { IUser } from './auth.type';
 import env from '../../config/config.service';
 import userInstance, { UserRepo } from '../../common/Repository/user.repo';
 import JWTService from '../../common/utils/JWT/JWT.service';
@@ -15,12 +15,14 @@ import redisService, {
   RedisService,
 } from '../../common/service/redis/redis.service';
 import { signupDTO } from './auth.Dto';
+import s3Service, { S3Service } from '../../common/service/cloude/s3.service';
 
 class AuthService {
   constructor(
     private readonly _userModel: UserRepo,
     private readonly redis: RedisService,
     private readonly smtp: SMTPService,
+    private readonly s3Service: S3Service,
   ) {}
 
   idleOperations = async (fn: () => Promise<void> | void) => {
@@ -129,19 +131,19 @@ class AuthService {
       }
       throw new ApiError('invalid Otp or its expired', 400);
     }
-    await this.redis.deleteKeys([
-      this.redis.confirmEmailOtpTries(email),
-      this.redis.blockConfirmEmailOtp(email),
-    ]);
     const isExist = await this._userModel.checkByEmail(email);
     if (isExist) {
       throw new ApiError('user already exists', 409);
     }
-    await this.redis.deleteKeys([
-      this.redis.createAccountKey(email),
-      this.redis.otpCodeKey(email),
+    const [user] = await Promise.all([
+      this._userModel.create(data as IUser),
+      this.redis.deleteKeys([
+        this.redis.createAccountKey(email),
+        this.redis.otpCodeKey(email),
+        this.redis.confirmEmailOtpTries(email),
+        this.redis.blockConfirmEmailOtp(email),
+      ]),
     ]);
-    const user = await this._userModel.create(data as IUser);
     const { accessToken, refreshToken } = this.generateCredentials(user);
     return { refreshToken, accessToken };
   };
@@ -222,7 +224,10 @@ class AuthService {
     if (!user) {
       throw new ApiError('user is not exist', 404);
     }
-    const isValid = await BcryptService.compare(otp.toString(), hashedOtp as string);
+    const isValid = await BcryptService.compare(
+      otp.toString(),
+      hashedOtp as string,
+    );
     if (!isValid) {
       throw new ApiError('invalid Otp or its expired', 400);
     }
@@ -232,7 +237,7 @@ class AuthService {
     );
     await this.redis.deleteKeys([this.redis.forgetPasswordKey(email)]);
   };
-  updatePassword = async (req: AuthRequest) => {
+  updatePassword = async (req: Request) => {
     const { user } = req;
     const { oldPassword, newPassword } = req.body;
     const userPassword = await this._userModel.findById(user!._id, {
@@ -253,7 +258,7 @@ class AuthService {
       { password: await BcryptService.hash(newPassword) },
     );
   };
-  logout = async (req: AuthRequest) => {
+  logout = async (req: Request) => {
     const { flag } = req.query;
     const { user, decoded } = req;
     if (flag === 'all') {
@@ -298,5 +303,54 @@ class AuthService {
     const { refreshToken, accessToken } = this.generateCredentials(user);
     return { refreshToken, accessToken, isNew };
   };
+  uploadProfilePicture = async (req: Request) => {
+    const { user } = req;
+    const { ContentType, OriginalName } = req.body;
+
+    const { url, key } = await this.s3Service.createPresignedUrl({
+      rootName: `users`,
+      key: `profile-pictures/${user!._id}`,
+      userId: user!._id,
+      ContentType,
+      OriginalName,
+    });
+
+    await this._userModel.updateOne({ _id: user!._id }, { pfp: key });
+    return url;
+  };
+  removeFileFromGallery = async (req: Request) => {
+    const { user } = req;
+    const { key } = req.body;
+    const chk = await this._userModel.findOneAndUpdate(
+      { _id: user!._id, gallery: { $in: [key] } },
+      { gallery: user!.gallery?.filter((item) => item !== key) },
+      { new: true },
+    );
+    if (!chk) {
+      throw new ApiError('file not found in gallery', 404);
+    }
+    await this.s3Service.deleteFile(key);
+  };
+  uploadGallery = async (req: Request) => {
+    const { user } = req;
+    if (!req.files) {
+      throw new ApiError('no file uploaded', 400);
+    }
+    const urls = await this.s3Service.uploadFiles({
+      files: req.files as Express.Multer.File[],
+      userId: user!._id,
+      key: `gallery`,
+    });
+    await this._userModel.updateOne(
+      { _id: user!._id },
+      { gallery: [...user?.gallery!, ...urls] },
+    );
+    return urls;
+  };
 }
-export default new AuthService(userInstance, redisService, smtpService);
+export default new AuthService(
+  userInstance,
+  redisService,
+  smtpService,
+  s3Service,
+);

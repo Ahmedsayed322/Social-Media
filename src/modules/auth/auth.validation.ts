@@ -90,3 +90,8 @@ export const resendOTPValidation = {
     email: z.email(),
   }),
 };
+export const removeFromGalleryValidation = {
+  body: z.strictObject({
+    key: z.string(),
+  }),
+};

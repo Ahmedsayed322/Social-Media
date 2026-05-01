@@ -1,6 +1,5 @@
 import { ZodType } from 'zod';
 import { Request, Response, NextFunction } from 'express';
-import { ApiError } from '../../utils/ApiError/ApiError';
 
 type reqType = keyof Request;
 type Schema = Partial<Record<reqType, ZodType>>;

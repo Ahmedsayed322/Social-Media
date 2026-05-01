@@ -15,6 +15,9 @@ export const GlobalErrorHandler: ErrorRequestHandler = (
   res,
   next,
 ) => {
+  if (res.headersSent) {
+    return next(err);
+  }
   const isApiError = err instanceof ApiError;
   const isDev = env.NODE_ENV === 'development';
 

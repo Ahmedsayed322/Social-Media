@@ -57,8 +57,15 @@ const schema = new Schema<IUser>(
     changeCredentials: {
       type: Date,
     },
+    pfp: {
+      type: String,
+    },
+    gallery: [
+      {
+        type: String,
+      },
+    ],
   },
-
   {
     timestamps: true,
   },
@@ -66,6 +73,18 @@ const schema = new Schema<IUser>(
 schema.pre('save', async function () {
   if (this.isModified('password')) {
     this.password = await BcryptService.hash(this.password);
+  }
+});
+schema.pre('findOne', function () {
+  const query = this.getQuery();
+  const { paranoid, ...rest } = query;
+  if (paranoid === false) {
+    this.setQuery(rest);
+  } else {
+    this.setQuery({
+      ...rest,
+      deletedAt: { $exists: false },
+    });
   }
 });
 const USER = model('User', schema);

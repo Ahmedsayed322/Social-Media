@@ -1,13 +1,12 @@
-import { Response, NextFunction } from 'express';
+import { Response, NextFunction, Request } from 'express';
 import { ApiError } from '../../utils/ApiError/ApiError';
 import JWTService from '../../utils/JWT/JWT.service';
 import userRepo from '../../Repository/user.repo';
-import { AuthRequest } from '../../../modules/auth/auth.type';
 import redisService, { RedisService } from '../../service/redis/redis.service';
 
 export class Auth {
   constructor(private redis: RedisService) {}
-  private getUser = async (req: AuthRequest, res: Response) => {
+  private getUser = async (req: Request, res: Response) => {
     const { authorization } = req.headers;
     if (!authorization) {
       throw new ApiError('missing authorization header', 401);
@@ -40,16 +39,12 @@ export class Auth {
     res.locals.user = user;
     req.decoded = decoded;
   };
-  authenticate = async (
-    req: AuthRequest,
-    res: Response,
-    next: NextFunction,
-  ) => {
+  authenticate = async (req: Request, res: Response, next: NextFunction) => {
     await this.getUser(req, res);
     next();
   };
   authorize = (types: string[]) => {
-    return async (req: AuthRequest, res: Response, next: NextFunction) => {
+    return async (req: Request, res: Response, next: NextFunction) => {
       await this.getUser(req, res);
       if (!types.includes(req.user!.role)) {
         throw new ApiError('you do not have access', 403);

@@ -1,4 +1,4 @@
-import jsonwebtoken, {  TokenExpiredError } from 'jsonwebtoken';
+import jsonwebtoken, { TokenExpiredError } from 'jsonwebtoken';
 import env from '../../../config/config.service';
 import { IEnv } from '../../../config/env.type';
 import { Types } from 'mongoose';

@@ -19,7 +19,7 @@ abstract class BaseRepository<T> {
 
   async findById(
     id: Types.ObjectId,
-    options?: QueryOptions&{select?:string[]},
+    options?: QueryOptions & { select?: string[] },
   ): Promise<HydratedDocument<T> | null> {
     const query = this.model
       .findById(id)
@@ -52,6 +52,16 @@ abstract class BaseRepository<T> {
   }
 
   async updateOne(
+    filter: QueryFilter<T>,
+    update: UpdateQuery<T>,
+    options?: QueryOptions,
+  ): Promise<HydratedDocument<T> | null> {
+    return this.model.findOneAndUpdate(filter, update, {
+      new: true,
+      ...options,
+    });
+  }
+  async findOneAndUpdate(
     filter: QueryFilter<T>,
     update: UpdateQuery<T>,
     options?: QueryOptions,

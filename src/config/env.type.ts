@@ -9,4 +9,8 @@ export interface IEnv {
   CONSUMER_SECRET: string;
   MY_EMAIL: string;
   CLIENT_ID: string;
+  AWS_ACCESS_KEY_ID: string;
+  AWS_SECRET_ACCESS_KEY: string;
+  AWS_REGION: string;
+  AWS_BUCKET_NAME: string;
 }
