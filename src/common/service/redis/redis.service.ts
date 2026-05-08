@@ -10,6 +10,7 @@ import env from '../../../config/config.service.js';
 import logger from '../../utils/logger/logger.service.js';
 
 import { RedisKeys } from './redis.keys';
+import { Types } from 'mongoose';
 
 export class RedisService extends RedisKeys {
   private redis: RedisClientType;
@@ -93,7 +94,21 @@ export class RedisService extends RedisKeys {
       throw e;
     }
   };
- 
+  addFCM = async (userId: Types.ObjectId, FCMToken: string) => {
+    return await this.redis.sAdd(this.fcmKey(userId), FCMToken);
+  };
+  removeFCM = async (userId: Types.ObjectId, FCMToken: string) => {
+    return await this.redis.sRem(this.fcmKey(userId), FCMToken);
+  };
+  getFCMs = async (userId: Types.ObjectId) => {
+    return await this.redis.sMembers(this.fcmKey(userId));
+  };
+  hasFCM = async (userId: Types.ObjectId) => {
+    return await this.redis.sCard(this.fcmKey(userId));
+  };
+  removeFCMUser = async (userId: Types.ObjectId) => {
+    return await this.redis.del(this.fcmKey(userId));
+  };
 }
 
 export default new RedisService();

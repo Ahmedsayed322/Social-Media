@@ -78,6 +78,62 @@ abstract class BaseRepository<T> {
   ): Promise<HydratedDocument<T> | null> {
     return this.model.findOneAndDelete(filter, options);
   }
+
+  async softDeleteOne(
+    filter: QueryFilter<T>,
+    options?: QueryOptions,
+  ): Promise<HydratedDocument<T> | null> {
+    return this.model.findOneAndUpdate(
+      filter,
+      { deletedAt: new Date() } as UpdateQuery<T>,
+      {
+        new: true,
+        ...options,
+      },
+    );
+  }
+
+  async restoreOne(
+    filter: QueryFilter<T>,
+    options?: QueryOptions,
+  ): Promise<HydratedDocument<T> | null> {
+    return this.model.findOneAndUpdate(
+      filter,
+      { $unset: { deletedAt: 1 } } as UpdateQuery<T>,
+      {
+        new: true,
+        ...options,
+      },
+    );
+  }
+  async paginate<T>({
+    page,
+    limit,
+    sort,
+    populate,
+    search,
+  }: {
+    page?: number;
+    limit?: number;
+    sort?: any;
+    populate?: PopulateOptions;
+    search?: QueryFilter<T>;
+  }) {
+    page = +page! || 1;
+    limit = +limit! || 10;
+    if (page < 0) page = 1;
+    if (limit < 0) limit = 10;
+    const skip = (page - 1) * limit;
+    const [data, totalDoc] = await Promise.all([
+      this.model
+        .find({ ...(search ?? {}) })
+        .limit(limit)
+        .skip(skip)
+        .populate(populate!),
+      this.model.countDocuments(),
+    ]);
+    return { currentPage: page, totalPages: Math.ceil(totalDoc / limit), data };
+  }
 }
 
 export default BaseRepository;

@@ -13,10 +13,13 @@ import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import compression from 'compression';
 import redisService from './common/service/redis/redis.service';
-
+import NotificationsService from './common/service/notification/firebase';
 import s3Service from './common/service/cloude/s3.service';
 import { pipeline } from 'node:stream';
 import { promisify } from 'node:util';
+import { successfulResponse } from './common/utils/response/successResponse';
+import postRouter from './modules/post/post.controller';
+import commentRouter from './modules/comment/comment.controller';
 const s3WritableStream = promisify(pipeline);
 const bootstrap = async () => {
   const app = express();
@@ -72,11 +75,21 @@ const bootstrap = async () => {
       return res.status(200).json({ url });
     },
   );
+  app.post('/send-notification', async (req, res) => {
+    await NotificationsService.sendNotification({
+      token: req.body.token as string,
+      data: { body: 'hi', title: 'test it ' },
+    });
+    return successfulResponse(res, 200, req.body.token);
+  });
   app.use('/api/auth', authRouter);
+  app.use('/api/posts', postRouter);
+  app.use('/api/comments', commentRouter);
   app.use('{/*dummy}', () => {
     throw new ApiError('invalid route', 404);
   });
   app.use(GlobalErrorHandler);
+
   app.listen(env.PORT, () => {
     logger.info(`Server is running on port ${env.PORT}`);
   });

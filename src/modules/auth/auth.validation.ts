@@ -43,6 +43,7 @@ export const otpValidation = {
 export const loginValidation = {
   body: z.strictObject({
     email: z.email('invalid email'),
+    fcmToken: z.string('invalid Token').optional(),
     password: z.string('password is required in type string'),
   }),
 };

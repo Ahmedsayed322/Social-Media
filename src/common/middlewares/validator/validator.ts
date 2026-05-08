@@ -11,6 +11,12 @@ const Validator = (Schema: Schema) => {
     }[] = [];
     for (const key of Object.keys(Schema) as reqType[]) {
       if (!Schema[key]) continue;
+      if (req.file) {
+        req.body.attachment = req.file;
+      }
+      if (req.files) {
+        req.body.attachments = req.files;
+      }
       const result = await Schema[key]?.safeParseAsync(req[key]);
       if (!result?.success) {
         result.error.issues.forEach((e) => {
@@ -22,7 +28,7 @@ const Validator = (Schema: Schema) => {
       }
     }
     if (validationErrors.length) {
-    return  res.status(400).json({
+      return res.status(400).json({
         success: false,
         message: validationErrors,
       });

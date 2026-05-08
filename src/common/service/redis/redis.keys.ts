@@ -23,7 +23,10 @@ export abstract class RedisKeys {
   blockConfirmEmailOtp = (email: string) => {
     return `block_confirm_email_otp::Tries::${email}`;
   };
-  resendOtpBlock =  (email: string) => {
+  resendOtpBlock = (email: string) => {
     return `block_re-send_confirm_email_otp::Tries::${email}`;
   };
+  fcmKey(userId: Types.ObjectId) {
+    return `user::FCM::${userId}`;
+  }
 }

@@ -1,4 +1,4 @@
-import {  Types } from 'mongoose';
+import { Types } from 'mongoose';
 import { GenderEnum } from '../../common/utils/enums/gender.enum';
 import { ProviderEnum } from '../../common/utils/enums/providers.enum';
 import { RolesEnum } from '../../common/utils/enums/roles.enum';
@@ -10,7 +10,6 @@ export interface IUser {
   email: string;
   password: string;
   provider: ProviderEnum;
-
   gender: GenderEnum;
   createdAt: Date;
   updatedAt: Date;
@@ -18,6 +17,7 @@ export interface IUser {
   changeCredentials?: Date;
   pfp?: string;
   gallery?: string[];
+  friends: Types.ObjectId[];
 }
 
 export interface TokenPayload extends JwtPayload {

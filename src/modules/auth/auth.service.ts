@@ -16,13 +16,21 @@ import redisService, {
 } from '../../common/service/redis/redis.service';
 import { signupDTO } from './auth.Dto';
 import s3Service, { S3Service } from '../../common/service/cloude/s3.service';
-
+import notificationService, {
+  NotificationService,
+} from '../../common/service/notification/firebase';
+const devLogging = (data: any) => {
+  if (env.NODE_ENV === 'development') {
+    console.log(data);
+  }
+};
 class AuthService {
   constructor(
     private readonly _userModel: UserRepo,
     private readonly redis: RedisService,
     private readonly smtp: SMTPService,
     private readonly s3Service: S3Service,
+    private readonly notificationService: NotificationService,
   ) {}
 
   idleOperations = async (fn: () => Promise<void> | void) => {
@@ -55,7 +63,6 @@ class AuthService {
     const hashedOtp = await BcryptService.hash(otp.toString());
     return { hashedOtp, otp };
   };
-
   ///////////////////////////////////////////////
   signup = async (req: Request) => {
     const NODE_ENV = env.NODE_ENV;
@@ -183,7 +190,7 @@ class AuthService {
     }
   };
   login = async (req: Request) => {
-    const { email, password } = req.body;
+    const { email, password, fcmToken } = req.body;
     const user = await this._userModel.findOne({ email }, { password: 1 });
     if (!user || user.provider === ProviderEnum.Google) {
       throw new ApiError('invalid email or password', 404);
@@ -191,6 +198,19 @@ class AuthService {
     const isValid = await BcryptService.compare(password, user.password);
     if (!isValid) {
       throw new ApiError('invalid email or password', 404);
+    }
+
+    if (fcmToken) {
+      await this.redis.addFCM(user._id, fcmToken);
+      const tokens = await this.redis.getFCMs(user._id);
+      devLogging(tokens);
+      await this.notificationService.sendNotifications({
+        tokens,
+        data: {
+          title: 'new logged in',
+          body: 'someone log to your account is that you?',
+        },
+      });
     }
     const { accessToken, refreshToken } = this.generateCredentials(user);
     return { accessToken, refreshToken };
@@ -260,6 +280,7 @@ class AuthService {
   };
   logout = async (req: Request) => {
     const { flag } = req.query;
+    const { fcmToken } = req.body;
     const { user, decoded } = req;
     if (flag === 'all') {
       user!.changeCredentials = new Date();
@@ -267,6 +288,7 @@ class AuthService {
       await this.redis.deleteKeys(
         await this.redis.getKeys(this.redis.getRevokeTokenKeys(user!._id)),
       );
+      await this.redis.removeFCMUser(req.user!._id);
       return;
     }
     await this.redis.setValue(
@@ -274,6 +296,7 @@ class AuthService {
       `${decoded!.jti}`,
       { EX: (decoded!.exp as number) - Math.floor(Date.now() / 1000) },
     );
+    await this.redis.removeFCM(req.user!._id, fcmToken);
   };
   authViaGmail = async (req: Request) => {
     const { idToken } = req.body;
@@ -353,4 +376,5 @@ export default new AuthService(
   redisService,
   smtpService,
   s3Service,
+  notificationService,
 );

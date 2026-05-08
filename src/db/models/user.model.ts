@@ -68,7 +68,7 @@ const schema = new Schema<IUser>(
   },
   {
     timestamps: true,
-  },
+  }
 );
 schema.pre('save', async function () {
   if (this.isModified('password')) {
@@ -87,5 +87,5 @@ schema.pre('findOne', function () {
     });
   }
 });
-const USER = model('User', schema);
+const USER = model('user', schema);
 export default USER;

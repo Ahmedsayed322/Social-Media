@@ -2,6 +2,7 @@ import {
   DeleteObjectCommand,
   DeleteObjectsCommand,
   GetObjectCommand,
+  ListObjectsV2Command,
   ObjectCannedACL,
   PutObjectCommand,
   S3Client,
@@ -177,7 +178,13 @@ export class S3Service {
     });
     return await this.s3.send(command);
   }
-
+  async getFiles(prefix: string) {
+    const files = new ListObjectsV2Command({
+      Bucket: env.AWS_BUCKET_NAME,
+      Prefix: prefix,
+    });
+    return await this.s3.send(files);
+  }
   async deleteFiles(keys: string[]) {
     const command = new DeleteObjectsCommand({
       Bucket: env.AWS_BUCKET_NAME,
@@ -188,5 +195,20 @@ export class S3Service {
     });
     return await this.s3.send(command);
   }
+  async deleteFolder(key: string) {
+    const filesNames: { Key: string }[] =
+      (await this.getFiles(key)).Contents?.map((f) => ({
+        Key: f.Key as string,
+      })) || [];
+    const command = new DeleteObjectsCommand({
+      Bucket: env.AWS_BUCKET_NAME,
+      Delete: {
+        Objects: filesNames,
+        Quiet: true,
+      },
+    });
+    return await this.s3.send(command);
+  }
 }
+
 export default new S3Service();
