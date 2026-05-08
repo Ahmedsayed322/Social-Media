@@ -2,4 +2,4 @@ dist/
 node_modules/
 .env.development
 .env.production
-src/config/social-media-app-f6312-firebase-adminsdk-fbsvc-f362495135.json
+src/config/social-media-app-f6312-firebase-adminsdk-fbsvc-f362495135.json/
