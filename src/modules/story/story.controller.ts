@@ -13,7 +13,7 @@ const router = Router();
 
 router.post(
   '/',
-  multerCloud(false).array('attachments'),
+  multerCloud(true).array('attachments'),
   Validator(createStoryValidation),
   authentication.authenticate,
   async (req: Request, res: Response, next: NextFunction) => {

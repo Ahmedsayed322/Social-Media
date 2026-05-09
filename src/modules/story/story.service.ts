@@ -20,6 +20,7 @@ class StoryService {
     if (req.files) {
       urls = await this.s3.uploadFiles({
         key: `stories/${folderId}`,
+        isLargeFiles: true,
         files: req.files as Express.Multer.File[],
         userId: req.user!._id,
       });

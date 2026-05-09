@@ -22,7 +22,9 @@ const multerCloud = (isDiskStorage = false) => {
     file: Express.Multer.File,
     cb: Function,
   ) => {
-    if (file.mimetype.startsWith('image/')) {
+    if (
+      (file.mimetype.startsWith('image/')|| file.mimetype.startsWith('video/'))
+    ) {
       cb(null, true);
     } else {
       cb(new ApiError('Only image files are allowed!', 400));
