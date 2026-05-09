@@ -7,3 +7,11 @@ export enum AvailabilityEnum {
   only_me = 'only_me',
   friends = 'friends',
 }
+export enum ReactEnum {
+  like = '👍',
+  love = '❤️',
+  smile = '😂',
+  wow = '😮',
+  sad = '😢',
+  angry = '😡',
+}

@@ -20,6 +20,7 @@ import { promisify } from 'node:util';
 import { successfulResponse } from './common/utils/response/successResponse';
 import postRouter from './modules/post/post.controller';
 import commentRouter from './modules/comment/comment.controller';
+import storyRouter from './modules/story/story.controller';
 const s3WritableStream = promisify(pipeline);
 const bootstrap = async () => {
   const app = express();
@@ -85,6 +86,7 @@ const bootstrap = async () => {
   app.use('/api/auth', authRouter);
   app.use('/api/posts', postRouter);
   app.use('/api/comments', commentRouter);
+  app.use('/api/stories', storyRouter);
   app.use('{/*dummy}', () => {
     throw new ApiError('invalid route', 404);
   });

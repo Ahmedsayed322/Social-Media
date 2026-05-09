@@ -3,7 +3,10 @@ import { Request } from 'express';
 import { createPostDto, updatePostDto } from './post.Dto';
 import { Types } from 'mongoose';
 import postInstance, { POSTRepo } from '../../common/Repository/post.repo';
-import { AvailabilityEnum } from '../../common/utils/enums/post.enum';
+import {
+  AvailabilityEnum,
+  ReactEnum,
+} from '../../common/utils/enums/post.enum';
 import userInstance, { UserRepo } from '../../common/Repository/user.repo';
 import { ApiError } from '../../common/utils/ApiError/ApiError';
 import notificationInstance, {
@@ -32,6 +35,29 @@ const postAvailability = (req: Request) => [
   },
   { tags: { $in: [req.user?._id] } },
 ];
+
+const profilePostSearch = (req: Request, profileId: Types.ObjectId) => {
+  const isOwner = req.user?._id?.equals(profileId);
+  const isFriend = req.user?.friends?.some((friend) =>
+    friend.equals(profileId),
+  );
+
+  if (isOwner) {
+    return { createdBy: profileId };
+  }
+
+  const search: any = {
+    createdBy: profileId,
+    $or: [{ availability: AvailabilityEnum.public }],
+  };
+
+  if (isFriend) {
+    search.$or.push({ availability: AvailabilityEnum.friends });
+  }
+
+  search.$or.push({ tags: req.user?._id });
+  return search;
+};
 class postService {
   constructor(
     private postModel: POSTRepo,
@@ -83,7 +109,7 @@ class postService {
         availability,
         allowComment,
         folderId,
-        likes: [],
+        reactions: [],
       });
     } catch (error) {
       await this.s3.deleteFiles(urls);
@@ -109,6 +135,7 @@ class postService {
     const posts = this.postModel.paginate({
       page: +req.query.page!,
       limit: +req.query.limit!,
+      sort: { createdAt: -1 },
       search: {
         $or: [...postAvailability(req)],
         ...searchQuery,
@@ -116,11 +143,66 @@ class postService {
     });
     return posts;
   };
+  getDashboard = async (req: Request) => {
+    const [totalPosts, taggedPosts, feedSummary] = await Promise.all([
+      this.postModel.count({ createdBy: req.user!._id }),
+      this.postModel.count({ tags: req.user!._id }),
+      this.postModel.paginate({
+        page: 1,
+        limit: 1,
+        sort: { createdAt: -1 },
+        search: { $or: [...postAvailability(req)] },
+      }),
+    ]);
+
+    return {
+      totalPosts,
+      taggedPosts,
+      friendsCount: req.user?.friends?.length || 0,
+      feed: {
+        currentPage: feedSummary.currentPage,
+        totalPages: feedSummary.totalPages,
+      },
+    };
+  };
+  getProfilePosts = async (req: Request) => {
+    const id = req.params.id as string;
+    const profileId = Types.ObjectId.createFromHexString(id)
+    const profileUser = await this.userModel.findOne({ _id: profileId });
+    if (!profileUser) {
+      throw new ApiError('profile not found', 404);
+    }
+    const posts = await this.postModel.paginate({
+      page: +req.query.page! || 1,
+      limit: +req.query.limit! || 10,
+      sort: { createdAt: -1 },
+      search: profilePostSearch(req, profileId),
+    });
+    return posts;
+  };
   likePost = async (req: Request) => {
     const { flag } = req.query;
-    let updateQuery: any = { $addToSet: { likes: req.user?._id } };
+    const reactKey = (req.body.react as keyof typeof ReactEnum) ?? 'like';
+    const reactEmoji = ReactEnum[reactKey];
+    let op: 'add' | 'remove' = 'add';
+    let updateQuery: any = {
+      $addToSet: { reactions: { userId: req.user!._id, react: reactEmoji } },
+    };
     if (flag && flag === 'disLike') {
-      updateQuery = { $pull: { likes: req.user?._id } };
+      op = 'remove';
+      updateQuery = { $pull: { reactions: { userId: req.user?._id } } };
+    }
+    if (op === 'add') {
+      await this.postModel.updateOne(
+        { _id: req.params.id },
+        {
+          $pull: {
+            reactions: {
+              userId: req.user!._id,
+            },
+          },
+        },
+      );
     }
     const post = await this.postModel.findOneAndUpdate(
       { _id: req.params.id, $or: [...postAvailability(req)] },
@@ -129,7 +211,6 @@ class postService {
     if (!post) {
       throw new ApiError('post not found ', 404);
     }
-
     return post;
   };
   updatePost = async (req: Request) => {
@@ -219,7 +300,6 @@ class postService {
     }
     return post;
   };
-
   removePost = async (req: Request) => {
     const { id } = req.params;
     const hard = String((req.query as any)?.hard) === 'true';

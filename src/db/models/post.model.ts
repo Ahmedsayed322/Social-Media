@@ -3,6 +3,7 @@ import { IPost } from '../../modules/post/post.type';
 import {
   AllowCommentEnum,
   AvailabilityEnum,
+  ReactEnum,
 } from '../../common/utils/enums/post.enum';
 import COMMENT from './comment.model';
 
@@ -28,10 +29,18 @@ const schema = new Schema<IPost>(
         ref: 'user',
       },
     ],
-    likes: [
+    reactions: [
       {
-        type: Types.ObjectId,
-        ref: 'user',
+        userId: {
+          type: Schema.Types.ObjectId,
+          ref: 'user',
+          required: true,
+        },
+        react: {
+          type: String,
+          enum: ReactEnum,
+          default: ReactEnum.like,
+        },
       },
     ],
     allowComment: {

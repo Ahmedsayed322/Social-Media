@@ -5,6 +5,7 @@ import { successfulResponse } from '../../common/utils/response/successResponse'
 import Validator from '../../common/middlewares/validator/validator';
 import {
   createPostValidation,
+  getProfliePosts,
   likePostValidation,
   removePostValidation,
   updatePostValidation,
@@ -29,11 +30,29 @@ router.get(
   authentication.authenticate,
   async (req: Request, res: Response, next: NextFunction) => {
     const posts = await postInstance.getPosts(req);
-    successfulResponse(res, 200, 'post created', { posts });
+    successfulResponse(res, 200, 'posts fetched', { posts });
+  },
+);
+
+router.get(
+  '/dashboard',
+  authentication.authenticate,
+  async (req: Request, res: Response, next: NextFunction) => {
+    const dashboard = await postInstance.getDashboard(req);
+    successfulResponse(res, 200, 'dashboard data fetched', { dashboard });
+  },
+);
+router.get(
+  '/profile/:id',
+  authentication.authenticate,
+  Validator(getProfliePosts),
+  async (req: Request, res: Response, next: NextFunction) => {
+    const profilePosts = await postInstance.getProfilePosts(req);
+    successfulResponse(res, 200, 'profile posts fetched', { profilePosts });
   },
 );
 router.patch(
-  '/like/:id',
+  '/react/:id',
   authentication.authenticate,
   Validator(likePostValidation),
   async (req: Request, res: Response, next: NextFunction) => {

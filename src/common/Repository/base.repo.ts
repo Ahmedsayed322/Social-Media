@@ -93,6 +93,10 @@ abstract class BaseRepository<T> {
     );
   }
 
+  async count(filter: QueryFilter<T> = {}): Promise<number> {
+    return this.model.countDocuments(filter);
+  }
+
   async restoreOne(
     filter: QueryFilter<T>,
     options?: QueryOptions,
@@ -127,10 +131,11 @@ abstract class BaseRepository<T> {
     const [data, totalDoc] = await Promise.all([
       this.model
         .find({ ...(search ?? {}) })
+        .sort(sort)
         .limit(limit)
         .skip(skip)
         .populate(populate!),
-      this.model.countDocuments(),
+      this.model.countDocuments(search ?? {}),
     ]);
     return { currentPage: page, totalPages: Math.ceil(totalDoc / limit), data };
   }

@@ -2,8 +2,8 @@ import * as z from 'zod';
 import {
   AllowCommentEnum,
   AvailabilityEnum,
+  ReactEnum,
 } from '../../common/utils/enums/post.enum';
-import { Types } from 'mongoose';
 import { sharedValidation } from '../../common/shared/validation';
 
 export const createPostValidation = {
@@ -39,6 +39,12 @@ export const likePostValidation = {
   params: z.strictObject({
     id: sharedValidation.id,
   }),
+  body: z.strictObject({
+    react: z.enum(
+      Object.keys(ReactEnum),
+      `invalid react ex:${Object.keys(ReactEnum)}`,
+    ),
+  }),
 };
 export const updatePostValidation = {
   params: z.strictObject({
@@ -47,15 +53,14 @@ export const updatePostValidation = {
   body: z
     .strictObject({
       content: z.string().min(1).optional(),
-      removeTags:z.array(sharedValidation.id).optional(),
+      removeTags: z.array(sharedValidation.id).optional(),
       attachments: z.array(sharedValidation.file).optional(),
-      removeFiles:z.array(z.string()).optional(),
+      removeFiles: z.array(z.string()).optional(),
       tags: z.array(sharedValidation.id).optional(),
       availability: z.enum(AvailabilityEnum).default(AvailabilityEnum.public),
       allowComment: z.enum(AllowCommentEnum).default(AllowCommentEnum.allow),
     })
     .superRefine((schema, ctx) => {
-    
       if (schema.tags) {
         const uniqueTags = new Set(schema.tags);
         if (uniqueTags.size !== schema.tags.length) {
@@ -75,5 +80,10 @@ export const removePostValidation = {
   }),
   query: z.strictObject({
     hard: z.coerce.boolean().optional(),
+  }),
+};
+export const getProfliePosts = {
+  params: z.object({
+    id: sharedValidation.id,
   }),
 };

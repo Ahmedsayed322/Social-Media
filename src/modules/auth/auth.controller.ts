@@ -1,5 +1,6 @@
 import { NextFunction, RequestHandler, Router } from 'express';
 import {
+  addFriendValidation,
   emailValidation,
   gmailAuthValidator,
   loginValidation,
@@ -115,6 +116,15 @@ router.post(
   },
 );
 router.post(
+  '/friends/:id',
+  auth.authenticate,
+  Validator(addFriendValidation),
+  async (req: Request, res: Response) => {
+    const result = await authServiceInst.addFriend(req);
+    return successfulResponse(res, 200, 'friend added successfully', result);
+  },
+);
+router.post(
   '/upload/pfp',
   auth.authenticate,
   async (req: Request, res: Response) => {
@@ -128,23 +138,22 @@ router.post(
       },
     );
   },
-  router.post(
-    '/upload/gallery',
-
-    auth.authenticate,
-    multerCloud(false).array('gallery'),
-    async (req: Request, res: Response) => {
-      const url = await authServiceInst.uploadGallery(req);
-      return successfulResponse(
-        res,
-        200,
-        'profile picture uploaded successfully',
-        {
-          url,
-        },
-      );
-    },
-  ),
+);
+router.post(
+  '/upload/gallery',
+  auth.authenticate,
+  multerCloud(false).array('gallery'),
+  async (req: Request, res: Response) => {
+    const url = await authServiceInst.uploadGallery(req);
+    return successfulResponse(
+      res,
+      200,
+      'profile picture uploaded successfully',
+      {
+        url,
+      },
+    );
+  },
 );
 router.delete(
   '/delete/gallery',

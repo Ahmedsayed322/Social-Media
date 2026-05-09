@@ -1,4 +1,5 @@
 import { Request } from 'express';
+import { Types } from 'mongoose';
 import BcryptService from '../../common/utils/bcrypt/Bcrypt.service';
 import { ApiError } from '../../common/utils/ApiError/ApiError';
 import smtpService, { SMTPService } from '../../common/utils/smtp/smtp.service';
@@ -19,6 +20,7 @@ import s3Service, { S3Service } from '../../common/service/cloude/s3.service';
 import notificationService, {
   NotificationService,
 } from '../../common/service/notification/firebase';
+import { Type } from '@aws-sdk/client-s3';
 const devLogging = (data: any) => {
   if (env.NODE_ENV === 'development') {
     console.log(data);
@@ -204,13 +206,17 @@ class AuthService {
       await this.redis.addFCM(user._id, fcmToken);
       const tokens = await this.redis.getFCMs(user._id);
       devLogging(tokens);
-      await this.notificationService.sendNotifications({
-        tokens,
-        data: {
-          title: 'new logged in',
-          body: 'someone log to your account is that you?',
-        },
-      });
+      try {
+        await this.notificationService.sendNotifications({
+          tokens,
+          data: {
+            title: 'new logged in',
+            body: 'someone log to your account is that you?',
+          },
+        });
+      } catch {
+        logger.info('notification error');
+      }
     }
     const { accessToken, refreshToken } = this.generateCredentials(user);
     return { accessToken, refreshToken };
@@ -326,6 +332,35 @@ class AuthService {
     const { refreshToken, accessToken } = this.generateCredentials(user);
     return { refreshToken, accessToken, isNew };
   };
+
+  addFriend = async (req: Request) => {
+    const id = req.params.id as string;
+    const friendId = Types.ObjectId.createFromHexString(id);
+    if (friendId.equals(req.user!._id)) {
+      throw new ApiError('you cannot add yourself as friend', 400);
+    }
+    const friend = await this._userModel.findOne({ _id: friendId });
+    if (!friend) {
+      throw new ApiError('user not found', 404);
+    }
+    const isFriend = req.user?.friends?.some((f) => f.equals(friendId));
+    if (isFriend) {
+      throw new ApiError('user is already your friend', 400);
+    }
+    await Promise.all([
+      this._userModel.updateOne(
+        { _id: req.user!._id },
+        { $addToSet: { friends: friendId } },
+      ),
+      this._userModel.updateOne(
+        { _id: friendId },
+        { $addToSet: { friends: req.user!._id } },
+      ),
+    ]);
+
+    return { message: 'friend added successfully' };
+  };
+
   uploadProfilePicture = async (req: Request) => {
     const { user } = req;
     const { ContentType, OriginalName } = req.body;

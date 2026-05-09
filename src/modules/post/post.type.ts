@@ -1,16 +1,23 @@
-import { Types } from "mongoose";
-import { AllowCommentEnum, AvailabilityEnum } from "../../common/utils/enums/post.enum";
+import { Types } from 'mongoose';
+import {
+  AllowCommentEnum,
+  AvailabilityEnum,
+  ReactEnum,
+} from '../../common/utils/enums/post.enum';
 
 export interface IPost {
   content?: string;
   attachments?: string[];
   createdBy: Types.ObjectId;
   tags?: Types.ObjectId[];
-  likes?: Types.ObjectId[];
+  reactions?: Types.ObjectId[];
   allowComment?: AllowCommentEnum;
   availability?: AvailabilityEnum;
   folderId: string;
   deletedAt?: Date;
   createdAt?: Date;
   updatedAt?: Date;
+}
+export interface IReact {
+  reactions: { userId: Types.ObjectId; react: ReactEnum }[];
 }

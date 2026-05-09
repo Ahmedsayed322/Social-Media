@@ -1,4 +1,4 @@
-import { model, Schema } from 'mongoose';
+import { model, Schema, Types } from 'mongoose';
 import { IUser } from '../../modules/auth/auth.type';
 import { ProviderEnum } from '../../common/utils/enums/providers.enum';
 import { GenderEnum } from '../../common/utils/enums/gender.enum';
@@ -65,10 +65,16 @@ const schema = new Schema<IUser>(
         type: String,
       },
     ],
+    friends: [
+      {
+        type: Types.ObjectId,
+        ref: 'user',
+      },
+    ],
   },
   {
     timestamps: true,
-  }
+  },
 );
 schema.pre('save', async function () {
   if (this.isModified('password')) {

@@ -1,16 +1,7 @@
 import * as z from 'zod';
 import { GenderEnum } from '../../common/utils/enums/gender.enum';
+import { sharedValidation } from '../../common/shared/validation';
 
-const sharedValidation = {
-  otp: z.number('otp is required in type number').int().min(100000).max(999999),
-  password: z
-    .string()
-    .min(6, 'password should be at least 6 characters')
-    .regex(/[A-Z]/, 'must contain at least one uppercase letter')
-    .regex(/[a-z]/, 'must contain at least one lowercase letter')
-    .regex(/[0-9]/, 'must contain at least one number'),
-  cPassword: z.string('confirm password is required and should be string'),
-};
 export const signupValidation = {
   body: z
     .strictObject({
@@ -89,6 +80,11 @@ export const gmailAuthValidator = {
 export const resendOTPValidation = {
   body: z.strictObject({
     email: z.email(),
+  }),
+};
+export const addFriendValidation = {
+  params: z.strictObject({
+    id: sharedValidation.id
   }),
 };
 export const removeFromGalleryValidation = {
