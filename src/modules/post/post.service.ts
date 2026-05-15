@@ -2,7 +2,7 @@ import env from '../../config/config.service';
 import { Request } from 'express';
 import { createPostDto, updatePostDto } from './post.Dto';
 import { Types } from 'mongoose';
-import postInstance, { POSTRepo } from '../../common/Repository/post.repo';
+import postModelInstance, { POSTRepo } from '../../common/Repository/post.repo';
 import {
   AvailabilityEnum,
   ReactEnum,
@@ -18,12 +18,13 @@ import redisInstance, {
 import s3Instance, { S3Service } from '../../common/service/cloude/s3.service';
 import { randomUUID } from 'node:crypto';
 import { IPost } from './post.type';
+import logger from '../../common/utils/logger/logger.service';
 const devLogging = (data: any) => {
   if (env.NODE_ENV === 'development') {
     console.log(data);
   }
 };
-const postAvailability = (req: Request) => [
+export const postAvailability = (req: Request) => [
   { availability: AvailabilityEnum.public },
   {
     availability: AvailabilityEnum.friends,
@@ -132,16 +133,26 @@ class postService {
     const searchQuery = req.query.search
       ? { content: { $regex: req.query.search, $options: 'i' } }
       : {};
-    const posts = this.postModel.paginate({
+    const posts = await this.postModel.paginate({
       page: +req.query.page!,
       limit: +req.query.limit!,
       sort: { createdAt: -1 },
       search: {
         $or: [...postAvailability(req)],
+
         ...searchQuery,
       },
+      opt: {},
+      populate: {
+        path: 'comments',
+        match: [{ commentId: { $exists: false } }],
+        populate: [{ path: 'replies' }],
+      },
     });
-    return posts;
+
+    // console.log(posts.data[0].replies!);
+
+    return { ...posts };
   };
   getDashboard = async (req: Request) => {
     const [totalPosts, taggedPosts, feedSummary] = await Promise.all([
@@ -167,7 +178,7 @@ class postService {
   };
   getProfilePosts = async (req: Request) => {
     const id = req.params.id as string;
-    const profileId = Types.ObjectId.createFromHexString(id)
+    const profileId = Types.ObjectId.createFromHexString(id);
     const profileUser = await this.userModel.findOne({ _id: profileId });
     if (!profileUser) {
       throw new ApiError('profile not found', 404);
@@ -333,8 +344,8 @@ class postService {
     return softDeleted;
   };
 }
-export default new postService(
-  postInstance,
+export const postInstance = new postService(
+  postModelInstance,
   userInstance,
   notificationInstance,
   redisInstance,

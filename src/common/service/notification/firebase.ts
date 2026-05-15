@@ -38,7 +38,7 @@ export class NotificationService {
   }) {
     await Promise.all(
       tokens.map((t) => {
-        this.sendNotification({ token: t, data });
+        return this.sendNotification({ token: t, data });
       }),
     );
   }

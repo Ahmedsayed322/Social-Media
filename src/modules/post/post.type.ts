@@ -17,6 +17,7 @@ export interface IPost {
   deletedAt?: Date;
   createdAt?: Date;
   updatedAt?: Date;
+  comments?: any[];
 }
 export interface IReact {
   reactions: { userId: Types.ObjectId; react: ReactEnum }[];

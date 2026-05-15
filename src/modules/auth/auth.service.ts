@@ -205,7 +205,6 @@ class AuthService {
     if (fcmToken) {
       await this.redis.addFCM(user._id, fcmToken);
       const tokens = await this.redis.getFCMs(user._id);
-      devLogging(tokens);
       try {
         await this.notificationService.sendNotifications({
           tokens,

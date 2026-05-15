@@ -1,6 +1,5 @@
 import { NextFunction, Request, Response, Router } from 'express';
 
-import postInstance from './post.service';
 import { successfulResponse } from '../../common/utils/response/successResponse';
 import Validator from '../../common/middlewares/validator/validator';
 import {
@@ -12,9 +11,11 @@ import {
 } from './post.validation';
 import multerCloud from '../../common/middlewares/upload/multer.cloud';
 import authentication from '../../common/middlewares/authentication/authentication';
+import commentRouter from '../comment/comment.controller';
+import { postInstance } from './post.service';
 
-const postService = postInstance;
 const router = Router();
+router.use('/:postId/comments{/:commentId/reply}', commentRouter);
 router.post(
   '/',
   multerCloud(false).array('attachments'),

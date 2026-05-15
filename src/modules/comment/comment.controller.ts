@@ -5,16 +5,19 @@ import authentication from '../../common/middlewares/authentication/authenticati
 import commentInstance from './comment.service';
 import {
   createCommentValidation,
+  createReplayValidation,
   listCommentsValidation,
   removeCommentValidation,
   updateCommentValidation,
 } from './comment.validation';
+import multerCloud from '../../common/middlewares/upload/multer.cloud';
 
-const router = Router();
+const router = Router({ mergeParams: true });
 
 router.post(
-  '/:postId',
+  '/',
   authentication.authenticate,
+  multerCloud(false).array('attachments'),
   Validator(createCommentValidation),
   async (req: Request, res: Response, next: NextFunction) => {
     const comment = await commentInstance.createComment(req);
@@ -23,7 +26,7 @@ router.post(
 );
 
 router.get(
-  '/:postId',
+  '/',
   authentication.authenticate,
   Validator(listCommentsValidation),
   async (req: Request, res: Response, next: NextFunction) => {
@@ -33,8 +36,9 @@ router.get(
 );
 
 router.patch(
-  '/:id',
+  '/:commentId',
   authentication.authenticate,
+  multerCloud(false).array('attachments'),
   Validator(updateCommentValidation),
   async (req: Request, res: Response, next: NextFunction) => {
     const comment = await commentInstance.updateComment(req);

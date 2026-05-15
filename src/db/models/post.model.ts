@@ -58,10 +58,17 @@ const schema = new Schema<IPost>(
   },
   {
     timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
     strict: true,
     strictQuery: true,
   },
 );
+schema.virtual('comments', {
+  localField: '_id',
+  foreignField: 'refId',
+  ref: 'comment',
+});
 
 schema.pre(
   ['find', 'findOne', 'findOneAndUpdate', 'countDocuments'],

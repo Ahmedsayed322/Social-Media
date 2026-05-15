@@ -115,11 +115,13 @@ abstract class BaseRepository<T> {
     limit,
     sort,
     populate,
+    opt,
     search,
   }: {
     page?: number;
     limit?: number;
     sort?: any;
+    opt?: QueryOptions<T>;
     populate?: PopulateOptions;
     search?: QueryFilter<T>;
   }) {
