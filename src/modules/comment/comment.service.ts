@@ -286,6 +286,9 @@ class CommentService {
         paranoid: false as any,
       } as any);
       if (!comment) throw new ApiError('comment not found', 404);
+      if (comment.attachments?.length) {
+        await this.s3.deleteFiles(comment.attachments);
+      }
       return comment;
     }
 
