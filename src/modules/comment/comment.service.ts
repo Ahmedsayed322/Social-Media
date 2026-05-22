@@ -17,7 +17,7 @@ import notificationInstance, {
   NotificationService,
 } from '../../common/service/notification/firebase';
 import { CreateCommentBodyDto } from './comment.Dto';
-import s3Instance, { S3Service } from '../../common/service/cloude/s3.service';
+import s3Instance, { S3Service } from '../../common/service/cloud/s3.service';
 import { Multer } from 'multer';
 import { randomUUID } from 'node:crypto';
 import { IComment } from './comment.type';

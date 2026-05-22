@@ -35,17 +35,20 @@ export class S3Service {
     userId,
     ACL = ObjectCannedACL.private,
     file,
+    expires,
   }: {
     file: Express.Multer.File;
     key?: string;
     isDiskStorage?: boolean;
     ACL?: ObjectCannedACL;
     userId?: Types.ObjectId;
+    expires?: boolean;
   }): Promise<string> {
     const command = new PutObjectCommand({
       Bucket: env.AWS_BUCKET_NAME,
       ACL,
       Key: `users/${userId}/${key}${extname(file.originalname)}`,
+      Tagging: `storyTtl=${expires ? true : false}`,
       ContentType: file.mimetype,
       Body: isDiskStorage ? createReadStream(file.path) : file.buffer,
     });
@@ -60,11 +63,13 @@ export class S3Service {
     userId,
     ACL = ObjectCannedACL.private,
     file,
+    expires = false,
   }: {
     file: Express.Multer.File;
     key?: string;
     ACL?: ObjectCannedACL;
     userId: Types.ObjectId;
+    expires?: boolean;
   }): Promise<string> {
     const command = new Upload({
       client: this.s3,
@@ -72,6 +77,7 @@ export class S3Service {
         Bucket: env.AWS_BUCKET_NAME,
         ACL,
         Key: `users/${userId}/${key}/${randomUUID()}-${file.originalname}`,
+        Tagging: `storyTtl=${expires ? true : false}`,
         ContentType: file.mimetype,
         Body: createReadStream(file.path),
       },
@@ -86,12 +92,14 @@ export class S3Service {
     ACL = ObjectCannedACL.private,
     files,
     isLargeFiles = false,
+    expires = false,
   }: {
     files: Express.Multer.File[];
     key?: string;
     isLargeFiles?: boolean;
     ACL?: ObjectCannedACL;
     userId: Types.ObjectId;
+    expires?: boolean;
   }) {
     let urls: string[] = [];
     if (isLargeFiles) {
@@ -102,6 +110,7 @@ export class S3Service {
             key: `${key}/${randomUUID()}`,
             userId,
             ACL,
+            expires,
           }),
         ),
       );
@@ -111,6 +120,7 @@ export class S3Service {
           this.uploadFile({
             file,
             key: `${key}/${randomUUID()}`,
+            expires,
             userId,
             ACL,
             isDiskStorage: false,

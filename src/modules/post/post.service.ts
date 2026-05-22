@@ -15,7 +15,7 @@ import notificationInstance, {
 import redisInstance, {
   RedisService,
 } from '../../common/service/redis/redis.service';
-import s3Instance, { S3Service } from '../../common/service/cloude/s3.service';
+import s3Instance, { S3Service } from '../../common/service/cloud/s3.service';
 import { randomUUID } from 'node:crypto';
 import { IPost } from './post.type';
 import logger from '../../common/utils/logger/logger.service';

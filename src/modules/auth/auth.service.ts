@@ -16,11 +16,10 @@ import redisService, {
   RedisService,
 } from '../../common/service/redis/redis.service';
 import { signupDTO } from './auth.Dto';
-import s3Service, { S3Service } from '../../common/service/cloude/s3.service';
+import s3Service, { S3Service } from '../../common/service/cloud/s3.service';
 import notificationService, {
   NotificationService,
 } from '../../common/service/notification/firebase';
-import { Type } from '@aws-sdk/client-s3';
 const devLogging = (data: any) => {
   if (env.NODE_ENV === 'development') {
     console.log(data);

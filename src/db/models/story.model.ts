@@ -14,9 +14,23 @@ const schema = new Schema<IStory>(
     },
 
     folderId: String,
+    excludedUsers: [
+      {
+        type: Types.ObjectId,
+        ref: 'user',
+      },
+    ],
+    views: [
+      {
+        type: Types.ObjectId,
+        ref: 'user',
+      },
+    ],
+
     expiresAt: {
       type: Date,
       required: true,
+      default: () => new Date(Date.now() + 24 * 60 * 60 * 1000),
       index: true,
     },
     deletedAt: { type: Date, index: true },
@@ -25,12 +39,15 @@ const schema = new Schema<IStory>(
     timestamps: true,
     strict: true,
     strictQuery: true,
+    toJSON: {
+      virtuals: true,
+    },
+    toObject: {
+      virtuals: true,
+    },
   },
 );
-
-// TTL index for automatic deletion after expiration
 schema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
-
 schema.pre(
   ['find', 'findOne', 'findOneAndUpdate', 'countDocuments'],
   function () {

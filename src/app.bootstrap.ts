@@ -14,21 +14,15 @@ import morgan from 'morgan';
 import compression from 'compression';
 import redisService from './common/service/redis/redis.service';
 import NotificationsService from './common/service/notification/firebase';
-import s3Service from './common/service/cloude/s3.service';
+import s3Service from './common/service/cloud/s3.service';
 import { pipeline } from 'node:stream';
 import { promisify } from 'node:util';
 import { successfulResponse } from './common/utils/response/successResponse';
 import postRouter from './modules/post/post.controller';
 import storyRouter from './modules/story/story.controller';
-import {
-  GraphQLInt,
-  GraphQLList,
-  GraphQLNonNull,
-  GraphQLObjectType,
-  GraphQLSchema,
-  GraphQLString,
-} from 'graphql';
+
 import { createHandler } from 'graphql-http/lib/use/express';
+import { GraphSchema } from './modules/graphql/graphqlSchema';
 const s3WritableStream = promisify(pipeline);
 const bootstrap = async () => {
   const app = express();
@@ -95,50 +89,16 @@ const bootstrap = async () => {
   app.use('/api/posts', postRouter);
   // app.use('/api/comments', commentRouter);
   app.use('/api/stories', storyRouter);
-  const users = [
-    { name: 'ahmed', age: 13 },
-    {
-      name: 'mohamed',
-      age: 23,
-    },
-  ];
-  const userType = new GraphQLObjectType({
-    name: 'userObject',
-    description: 'object type',
-    fields: {
-      name: { type: GraphQLString },
-      age: { type: GraphQLInt },
-    },
-  });
-  const schema = new GraphQLSchema({
-    query: new GraphQLObjectType({
-      name: 'GraphQlRoot',
-      fields: {
-        filteredUsersOnAge: {
-          type: new GraphQLList(userType),
-          args: { age: { type: GraphQLInt } },
-          resolve: (_, args: { age: number }) => {
-            return users.filter((e) => e.age >= args.age);
-          },
-        },
-        getUser: {
-          type: userType,
-          args: {
-            name: { type: GraphQLString },
-          },
-          resolve: (_, args: { name: string }) =>
-            users.find((e) => e.name === args.name),
-        },
-        listOfUsers: {
-          type: new GraphQLList(userType),
-          resolve: () => {
-            return users;
-          },
-        },
-      },
+
+  app.use(
+    '/test',
+    createHandler({
+      schema: GraphSchema,
+      context: (req) => ({
+        req,
+      }),
     }),
-  });
-  app.use('/test', createHandler({ schema }));
+  );
   app.use('{/*dummy}', () => {
     throw new ApiError('invalid route', 404);
   });

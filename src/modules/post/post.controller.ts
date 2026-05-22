@@ -1,10 +1,10 @@
 import { NextFunction, Request, Response, Router } from 'express';
 
 import { successfulResponse } from '../../common/utils/response/successResponse';
-import Validator from '../../common/middlewares/validator/validator';
+import {Validator} from '../../common/middlewares/validator/validator';
 import {
   createPostValidation,
-  getProfliePosts,
+  getProfilePosts,
   likePostValidation,
   removePostValidation,
   updatePostValidation,
@@ -46,7 +46,7 @@ router.get(
 router.get(
   '/profile/:id',
   authentication.authenticate,
-  Validator(getProfliePosts),
+  Validator(getProfilePosts),
   async (req: Request, res: Response, next: NextFunction) => {
     const profilePosts = await postInstance.getProfilePosts(req);
     successfulResponse(res, 200, 'profile posts fetched', { profilePosts });

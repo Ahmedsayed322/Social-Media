@@ -1,7 +1,9 @@
 import * as z from 'zod';
 import { GenderEnum } from '../../common/utils/enums/gender.enum';
 import { sharedValidation } from '../../common/shared/validation';
-
+export const myProfileValidation = z.object({
+  authorization: z.string(),
+});
 export const signupValidation = {
   body: z
     .strictObject({
@@ -84,7 +86,7 @@ export const resendOTPValidation = {
 };
 export const addFriendValidation = {
   params: z.strictObject({
-    id: sharedValidation.id
+    id: sharedValidation.id,
   }),
 };
 export const removeFromGalleryValidation = {

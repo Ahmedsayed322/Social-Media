@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response, Router } from 'express';
 import { successfulResponse } from '../../common/utils/response/successResponse';
-import Validator from '../../common/middlewares/validator/validator';
+import {Validator} from '../../common/middlewares/validator/validator';
 import authentication from '../../common/middlewares/authentication/authentication';
 import commentInstance from './comment.service';
 import {

@@ -5,6 +5,8 @@ export interface IStory {
   content?: string;
   attachments?: string[];
   createdBy: Types.ObjectId;
+  excludedUsers: Types.ObjectId[];
+  views: Types.ObjectId[];
   folderId: string;
   expiresAt: Date;
   deletedAt?: Date;

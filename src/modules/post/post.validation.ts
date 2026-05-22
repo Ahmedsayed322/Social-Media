@@ -82,7 +82,7 @@ export const removePostValidation = {
     hard: z.coerce.boolean().optional(),
   }),
 };
-export const getProfliePosts = {
+export const getProfilePosts = {
   params: z.object({
     id: sharedValidation.id,
   }),

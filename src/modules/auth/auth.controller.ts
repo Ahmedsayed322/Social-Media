@@ -16,7 +16,7 @@ import authService from './auth.service';
 import { successfulResponse } from '../../common/utils/response/successResponse';
 import auth from '../../common/middlewares/authentication/authentication';
 import multerCloud from '../../common/middlewares/upload/multer.cloud';
-import Validator from '../../common/middlewares/validator/validator';
+import {Validator} from '../../common/middlewares/validator/validator';
 const generateRefreshToken = (res: Response, refreshToken: string) => {
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,

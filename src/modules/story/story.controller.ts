@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response, Router } from 'express';
 import storyInstance from './story.service';
 import { successfulResponse } from '../../common/utils/response/successResponse';
-import Validator from '../../common/middlewares/validator/validator';
+import {Validator} from '../../common/middlewares/validator/validator';
 import {
   createStoryValidation,
 
