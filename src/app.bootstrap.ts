@@ -23,6 +23,8 @@ import storyRouter from './modules/story/story.controller';
 
 import { createHandler } from 'graphql-http/lib/use/express';
 import { GraphSchema } from './modules/graphql/graphqlSchema';
+import { Server } from 'socket.io';
+import socketGateway from './realtime/socket.gateway';
 const s3WritableStream = promisify(pipeline);
 const bootstrap = async () => {
   const app = express();
@@ -35,7 +37,8 @@ const bootstrap = async () => {
     express.json(),
     helmet(),
     rateLimiter.global(),
-    cors(corsOption),
+    // cors(corsOption),
+    cors({ origin: 'http://localhost:4200', credentials: true }),
     cookieParser(),
   );
   app.get('/', (req, res) => {
@@ -91,7 +94,7 @@ const bootstrap = async () => {
   app.use('/api/stories', storyRouter);
 
   app.use(
-    '/test',
+    '/graphql',
     createHandler({
       schema: GraphSchema,
       context: (req) => ({
@@ -103,9 +106,10 @@ const bootstrap = async () => {
     throw new ApiError('invalid route', 404);
   });
   app.use(GlobalErrorHandler);
-  app.listen(env.PORT, () => {
+  const server = app.listen(env.PORT, () => {
     logger.info(`Server is running on port ${env.PORT}`);
   });
+  await socketGateway.socketInit(server);
 };
 
 export default bootstrap;

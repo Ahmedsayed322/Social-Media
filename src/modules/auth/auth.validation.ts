@@ -94,3 +94,8 @@ export const removeFromGalleryValidation = {
     key: z.string(),
   }),
 };
+export const logoutValidation = {
+  body: z.strictObject({
+    fcmToken: z.string(),
+  }),
+};

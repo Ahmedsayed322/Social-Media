@@ -109,6 +109,21 @@ export class RedisService extends RedisKeys {
   removeFCMUser = async (userId: Types.ObjectId) => {
     return await this.redis.del(this.fcmKey(userId));
   };
+  addSocket = async (userId: Types.ObjectId, socketToken: string) => {
+    return await this.redis.sAdd(this.socketKey(userId), socketToken);
+  };
+  removeSocket = async (userId: Types.ObjectId, socketToken: string) => {
+    return await this.redis.sRem(this.socketKey(userId), socketToken);
+  };
+  getSockets = async (userId: Types.ObjectId) => {
+    return await this.redis.sMembers(this.socketKey(userId));
+  };
+  hasSocket = async (userId: Types.ObjectId) => {
+    return await this.redis.sCard(this.socketKey(userId));
+  };
+  removeSocketUser = async (userId: Types.ObjectId) => {
+    return await this.redis.del(this.socketKey(userId));
+  };
 }
 
 export default new RedisService();

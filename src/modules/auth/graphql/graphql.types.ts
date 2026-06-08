@@ -12,7 +12,6 @@ import {
   AvailabilityEnum,
   ReactEnum,
 } from '../../../common/utils/enums/post.enum';
-
 export const postTypes = new GraphQLObjectType({
   name: 'PostObject',
   fields: {
@@ -60,7 +59,15 @@ export const postTypes = new GraphQLObjectType({
     folderId: { type: GraphQLString },
   },
 });
-
+export const friendType = new GraphQLObjectType({
+  name: 'FriendObject',
+  fields: {
+    _id: { type: GraphQLID },
+    firstName: { type: GraphQLString },
+    lastName: { type: GraphQLString },
+    pfp: { type: GraphQLString },
+  },
+});
 export const userType = new GraphQLObjectType({
   name: 'UserObject',
   fields: {
@@ -84,12 +91,11 @@ export const userType = new GraphQLObjectType({
     },
 
     friends: {
-      type: new GraphQLList(GraphQLID),
+      type: new GraphQLList(friendType),
     },
 
     createdAt: { type: GraphQLString },
     updatedAt: { type: GraphQLString },
     changeCredentials: { type: GraphQLString },
-
   },
 });

@@ -4,6 +4,7 @@ import {
   emailValidation,
   gmailAuthValidator,
   loginValidation,
+  logoutValidation,
   otpValidation,
   removeFromGalleryValidation,
   resendOTPValidation,
@@ -16,17 +17,21 @@ import authService from './auth.service';
 import { successfulResponse } from '../../common/utils/response/successResponse';
 import auth from '../../common/middlewares/authentication/authentication';
 import multerCloud from '../../common/middlewares/upload/multer.cloud';
-import {Validator} from '../../common/middlewares/validator/validator';
+import { Validator } from '../../common/middlewares/validator/validator';
+import logger from '../../common/utils/logger/logger.service';
+import chatRouter from '../chat/chat.controller';
+import authentication from '../../common/middlewares/authentication/authentication';
 const generateRefreshToken = (res: Response, refreshToken: string) => {
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
-    sameSite: 'lax',
+    sameSite: 'strict',
     secure: false,
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 };
 const authServiceInst = authService;
 const router = Router();
+router.use('/:userId/chat', chatRouter);
 router.post(
   '/signup',
   Validator(signupValidation),
@@ -86,6 +91,7 @@ router.patch(
 router.delete(
   '/logout',
   auth.authenticate,
+  Validator(logoutValidation),
   async (req: Request, res: Response) => {
     await authServiceInst.logout(req);
     return successfulResponse(res, 200, 'user logged out');
@@ -139,6 +145,12 @@ router.post(
     );
   },
 );
+router.get('/refresh-token', async (req: Request, res: Response) => {
+  const accessToken = await authService.refreshToken(req);
+  return successfulResponse(res, 200, 'access token refreshed successfully', {
+    accessToken,
+  });
+});
 router.post(
   '/upload/gallery',
   auth.authenticate,
@@ -166,6 +178,17 @@ router.delete(
       200,
       'file removed from gallery successfully',
     );
+  },
+);
+router.get(
+  '/profile',
+  authentication.authenticate,
+  async (req: Request, res: Response) => {
+    await req.user?.populate({
+      path: 'friends',
+      select: '_id firstName lastName pfp',
+    });
+    successfulResponse(res, 200, 'success', { user: req.user });
   },
 );
 

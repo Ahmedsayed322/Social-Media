@@ -29,4 +29,7 @@ export abstract class RedisKeys {
   fcmKey(userId: Types.ObjectId) {
     return `user::FCM::${userId}`;
   }
+  socketKey(userId: Types.ObjectId) {
+    return `user::socket::${userId}`;
+  }
 }

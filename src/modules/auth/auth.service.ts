@@ -45,7 +45,8 @@ class AuthService {
     }
   };
 
-  generateCredentials = (user: IUser) => {
+  generateCredentials = (user: any) => {
+    logger.info(user.toObject());
     const jti = randomUUID();
     const refreshToken = JWTService.generateRefreshToken(
       user._id,
@@ -192,7 +193,11 @@ class AuthService {
   };
   login = async (req: Request) => {
     const { email, password, fcmToken } = req.body;
-    const user = await this._userModel.findOne({ email }, { password: 1 });
+    const user = await this._userModel.findOne(
+      { email },
+      { email: 1, password: 1 },
+    );
+
     if (!user || user.provider === ProviderEnum.Google) {
       throw new ApiError('invalid email or password', 404);
     }
@@ -216,6 +221,7 @@ class AuthService {
         logger.info('notification error');
       }
     }
+
     const { accessToken, refreshToken } = this.generateCredentials(user);
     return { accessToken, refreshToken };
   };
@@ -402,6 +408,41 @@ class AuthService {
       { gallery: [...user?.gallery!, ...urls] },
     );
     return urls;
+  };
+  refreshToken = async (req: Request) => {
+    const refreshToken = req.cookies.refreshToken;
+    console.log(req.cookies);
+    
+    if (!refreshToken) {
+      throw new ApiError('refresh token is required', 400);
+    }
+    const decoded = JWTService.verifyRefreshToken(refreshToken);
+    if (!decoded) {
+      throw new ApiError('invalid refresh token', 400);
+    }
+    const isRevoked = await this.redis.getValue(
+      this.redis.revokedTokenKey(decoded.id, decoded.jti!),
+    );
+    const user = await this._userModel.findById(decoded.id);
+    if (!user) {
+      throw new ApiError('user not found', 404);
+    }
+    if (
+      user.changeCredentials &&
+      user.changeCredentials.getTime() > decoded.iat! * 1000
+    ) {
+      throw new ApiError('token is revoked,please login again', 401);
+    }
+    if (isRevoked) {
+      throw new ApiError('token is revoked,please login again', 401);
+    }
+
+    const accessToken = JWTService.generateAccessToken(
+      decoded.id,
+      decoded.email,
+      decoded.jti!,
+    );
+    return accessToken;
   };
 }
 export default new AuthService(
